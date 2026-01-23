@@ -1,31 +1,45 @@
-    # %% [markdown]
+"""Machine Learning Bootcamp: Data Preparation for ML Models
+
+This module provides a comprehensive introduction to data preprocessing for
+machine learning, including:
+- Data type conversions and categorical variable handling
+- Feature scaling and normalization techniques
+- One-hot encoding for categorical variables
+- Train-test-tune splitting with stratification
+- Baseline/prevalence calculation for classification problems
+
+Designed for students new to machine learning and data preparation.
+"""
+
+# %% [markdown]
 # # Machine Learning Bootcamp
 
 # %%
-# Imports
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt 
-#make sure to install sklearn in your terminal first!
-from sklearn.model_selection import train_test_split 
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from io import StringIO
-import requests
+# Imports - Libraries needed for data manipulation and ML preprocessing
+import pandas as pd  # For data manipulation and analysis
+import numpy as np  # For numerical operations
+import matplotlib.pyplot as plt  # For data visualization
+# Make sure to install sklearn in your terminal first!
+# Use: pip install scikit-learn
+from sklearn.model_selection import train_test_split  # For splitting data
+from sklearn.preprocessing import MinMaxScaler, StandardScaler  # For scaling
+from io import StringIO  # For reading string data as file
+import requests  # For HTTP requests to download data
 
 
 # %% [markdown]
 # ## Phase I
-# 
-# ### Working to develop a model than can predict cereal quality rating...
-# 
-# -What is the target variable?
-# 
-# -Assuming we are able to optimize and make recommendations 
-# how does this translate into a business context? 
-# 
-# -Prediction problem: Classification or Regression?
-# 
-# -Independent Business Metric: Assuming that higher ratings results in higher sales, can we predict which new cereals that enter the market over the next year will perform the best?
+#
+# ### Working to develop a model that can predict cereal quality rating...
+#
+# Key Questions to Consider:
+# - What is the target variable?
+# - Assuming we are able to optimize and make recommendations,
+#   how does this translate into a business context?
+# - Prediction problem: Classification or Regression?
+# - Independent Business Metric: Assuming that higher ratings result in
+#   higher sales, can we predict which new cereals that enter the market
+#   over the next year will perform the best?
 
 # %% [markdown]
 # ## Phase II
@@ -34,190 +48,320 @@ import requests
 # ### Scale/Center/Normalizing/Variable Classes
 
 # %%
-#read in the cereal dataset, you should have this locally or you can use the URL linking to the class repo below
-cereal = pd.read_csv("https://raw.githubusercontent.com/UVADS/DS-3001/main/data/cereal.csv")
+# Read in the cereal dataset from the class repository
+# You can use this URL or download it locally
+# Dataset source: https://github.com/UVADS/DS-3001
+cereal_url = ("https://raw.githubusercontent.com/UVADS/DS-3001/"
+              "main/data/cereal.csv")
+cereal = pd.read_csv(cereal_url)
 
-cereal.info() # Let's check the structure of the dataset and see if we have any issues with variable classes
-#usually it's converting things to category
-
-
-# %%
-#Looks like columns 11 and 12 need to be converted to category
-
-cols = ["type","mfr","vitamins","shelf"]
-cereal[cols]= cereal[cols].astype('category') 
-#iloc accesses the index of a dataframe, bypassing having to manually type in the names of each column
-
-#convert type variable in category variable
-#cereal.type = cereal.type.astype('category') #this is the same as the above code, but for a single column
-
-
-cereal.dtypes #another way of checking the structure of the dataset. Simpler, but does not give an index
-
-# %%
-#Let's take a closer look at mfr
-print(cereal.mfr.value_counts()) #value_counts() simply displays variable counts as a vertical table.
-
-# %%
-#Usually don't want more than 5 groups, so we should collapse this factor  
-#Keep the large groups (G, K) and group all the smaller categories as "Other"
-
-top = ['K','G']
-cereal.mfr = (cereal.mfr.apply(lambda x: x if x in top else "Other")).astype('category')
-#lambda is a small anonymous function that can take any number of arguments but can only have one expression
-#a simple lambda function is lambda a: a+10, if we passed 5 to this we would get back 15
-#lambda functions are best used inside of another function, like in this example when it is used inside the apply function
-#to use an if function in a lambda statement, the True return value comes first (x), then the if statement, then else, and then the False return
-
-cereal.mfr.value_counts() #This is a lot better
+# Let's check the structure of the dataset and see if we have any issues
+# with variable classes (data types)
+cereal.info()
+# Usually we need to convert string/object columns to category type
 
 
 # %%
-cereal.type.value_counts() #looks good
+# Convert categorical columns to the 'category' data type
+# This is important for:
+# 1. Memory efficiency - categories use less memory
+# 2. Proper statistical analysis
+# 3. Correct handling in ML algorithms
+
+cols = ["type", "mfr", "vitamins", "shelf"]
+cereal[cols] = cereal[cols].astype('category')
+# astype() changes the data type of specified columns
+# 'category' is a special pandas dtype for categorical variables
+
+# Alternative approach for a single column (commented out):
+# cereal.type = cereal.type.astype('category')
+
+# Check the data types to confirm changes
+cereal.dtypes  # Simpler than .info(), shows just the data types
 
 # %%
-cereal.vitamins.value_counts() #also good
+# Let's take a closer look at the manufacturer (mfr) variable
+# value_counts() displays the frequency of each unique value
+print(cereal.mfr.value_counts())
 
 # %%
-cereal.weight.value_counts() #what about this one? ... Not a categorical variable groupings so it does not matter right now
+# Usually we don't want more than 5 groups in a categorical variable
+# Too many categories can lead to:
+# 1. Sparse data (too few samples per category)
+# 2. Overfitting in ML models
+# 3. Computational inefficiency
+#
+# Strategy: Keep the large groups (G=General Mills, K=Kellogg's)
+# and group all smaller categories as "Other"
+
+top_manufacturers = ['K', 'G']
+# Lambda function explanation:
+# lambda x: x if x in top else "Other"
+# - Takes input x (each manufacturer code)
+# - Returns x if it's in our top list
+# - Otherwise returns "Other"
+# Lambda functions are small anonymous functions useful for simple operations
+cereal.mfr = (cereal.mfr.apply(lambda x: x if x in top_manufacturers
+                               else "Other")).astype('category')
+
+# Verify the grouping worked
+cereal.mfr.value_counts()  # This is much better - only 3 groups now!
+
+# %%
+# Check other categorical variables
+cereal.type.value_counts()  # Looks good - just 2 types (Cold/Hot)
+
+# %%
+cereal.vitamins.value_counts()  # Also good
+
+# %%
+# Weight is numeric, not categorical, so value counts aren't meaningful here
+cereal.weight.value_counts()
 
 # %% [markdown]
 # ### Scale/Center
+#
+# **Why scale data?**
+# Many ML algorithms (like SVM, neural networks, k-NN) are sensitive to the
+# scale of features. Features with larger ranges can dominate the model.
+# Scaling puts all features on the same scale for fair comparison.
 
 # %%
-#Centering and Standardizing Data
-sodium_sc = StandardScaler().fit_transform(cereal[['sodium']])
-#reshapes series into an appropriate argument for the function fit_transform: an array
+# Standardization (Z-score normalization)
+# Formula: (x - mean) / standard_deviation
+# Result: Mean = 0, Standard Deviation = 1
+# Use when: Data is normally distributed or algorithm assumes
+# normal distribution
 
-print(sodium_sc[:10]) #essentially taking the zscores of the data, here are the first 10 values
+sodium_standardized = StandardScaler().fit_transform(cereal[['sodium']])
+# fit_transform() learns the mean and std, then applies the transformation
+# Double brackets [['sodium']] create a DataFrame (required by sklearn)
+
+# Display first 10 standardized values
+print(sodium_standardized[:10])  # These are z-scores
 
 # %% [markdown]
-# ### Normalizing the numeric values 
+# ### Normalizing the Numeric Values
+#
+# **Min-Max Normalization**
+# Formula: (x - min) / (max - min)
+# Result: All values between 0 and 1
+# Use when: You want bounded values or don't assume normal distribution
 
 # %%
-#Let's look at min-max scaling, placing the numbers between 0 and 1. 
-sodium_n = MinMaxScaler().fit_transform(cereal[['sodium']])
-print(sodium_n[:10])
+# Min-Max scaling example with sodium
+sodium_normalized = MinMaxScaler().fit_transform(cereal[['sodium']])
+print(sodium_normalized[:10])  # Values now between 0 and 1
 
 # %%
-#Let's check just to be sure the relationships are the same
+# Let's verify that scaling preserves the distribution shape
+# Plot the original distribution
 cereal.sodium.plot.density()
 
 # %%
-pd.DataFrame(sodium_n).plot.density() #Checks out!
+# Plot the normalized distribution
+pd.DataFrame(sodium_normalized).plot.density()
+# The shape is identical - only the scale changed!
 
 # %%
-#Now we can move forward in normalizing the numeric values and create a index based on numeric columns:
-abc = list(cereal.select_dtypes('number')) #select function to find the numeric variables and create a list  
+# Now normalize ALL numeric columns in the dataset
+# Step 1: Select all numeric columns
+numeric_cols = list(cereal.select_dtypes('number'))
+# select_dtypes('number') finds all int and float columns
 
-cereal[abc] = MinMaxScaler().fit_transform(cereal[abc])
-#print(cereal) #notice the difference in the range of values for the numeric variables
+# Step 2: Apply Min-Max scaling to all numeric columns
+cereal[numeric_cols] = MinMaxScaler().fit_transform(cereal[numeric_cols])
+# Now all numeric features are on the same scale (0 to 1)
+# This is crucial for distance-based algorithms!
 
 # %% [markdown]
-# ### One-hot Encoding 
+# ### One-Hot Encoding
+#
+# **What is One-Hot Encoding?**
+# ML algorithms work with numbers, not categories. One-hot encoding converts
+# categorical variables into binary (0/1) indicator columns.
+#
+# Example: If 'type' has values ['C', 'H'], it becomes:
+# - type_C: 1 if Cold, 0 otherwise
+# - type_H: 1 if Hot, 0 otherwise
+#
+# **Why use it?**
+# - Prevents the algorithm from assuming ordinal relationships
+# - Works with any ML algorithm
+# - No arbitrary numeric encoding
 
 # %%
-# Next let's one-hot encode those categorical variables
+# Get list of all categorical columns
+category_list = list(cereal.select_dtypes('category'))
 
-category_list = list(cereal.select_dtypes('category')) #select function to find the categorical variables and create a list  
+# Apply one-hot encoding
+cereal_encoded = pd.get_dummies(cereal, columns=category_list)
+# get_dummies() creates new binary columns for each category level
+# Original categorical columns are removed, replaced by indicator columns
 
-cereal_1h = pd.get_dummies(cereal, columns = category_list) 
-#get_dummies encodes categorical variables into binary by adding in indicator column for each group of a category and assigning it 0 if false or 1 if true
-cereal_1h.info() #see the difference? This is one-hot encoding!
+# Check the result
+cereal_encoded.info()
+# Notice: Each category now has its own column with 1s and 0s!
 
 # %% [markdown]
-# ### Baseline/Prevalance 
+# ### Baseline/Prevalence
+#
+# **What is Baseline/Prevalence?**
+# For classification problems, the baseline is the accuracy you'd get by
+# always predicting the most common class. Your ML model should beat this!
+#
+# **Why calculate it?**
+# - Sets a minimum performance target
+# - Helps evaluate if your model is actually learning
+# - Important for imbalanced datasets
 
 # %%
-#This is essentially the target to which we are trying to out perform with our model. Percentage is represented by the positive class. 
-#Rating is continuous, but we are going to turn it into a Boolean to be used for classification by selecting the top quartile of values.
+# We'll convert the continuous 'rating' into a binary classification problem
+# by identifying high-quality cereals (top quartile)
 
-print(cereal_1h.boxplot(column= 'rating', vert= False, grid=False))
-print(cereal_1h.rating.describe()) #notice the upper quartile of values will be above 0.43 
-
-# %%
-#add this as a predictor instead of replacing the numeric version
-cereal_1h['rating_f'] = pd.cut(cereal_1h.rating, bins = [-1,0.43,1], labels =[0,1])
-#If we want two segments we input three numbers, start, cut and stop values
-
-cereal_1h.info() #notice the new column rating_f, it is now category based on if the continuous value is above 0.43 or not
+# Visualize the rating distribution
+print(cereal_encoded.boxplot(column='rating', vert=False, grid=False))
+# Display summary statistics
+print(cereal_encoded.rating.describe())
+# Note: The upper quartile (75th percentile) is at 0.43
 
 # %%
-#So now let's check the prevalence 
-prevalence = cereal_1h.rating_f.value_counts()[1]/len(cereal_1h.rating_f)
-#value_count()[1] pulls the count of '1' values in the column (values above .43)
+# Create a binary target variable: rating_f (rating_flag)
+# 1 = High quality (rating > 0.43), 0 = Lower quality (rating <= 0.43)
+cereal_encoded['rating_f'] = pd.cut(cereal_encoded.rating,
+                                    bins=[-1, 0.43, 1],
+                                    labels=[0, 1])
+# pd.cut() bins continuous values into discrete categories
+# bins=[-1, 0.43, 1] creates two bins: (-1, 0.43] and (0.43, 1]
+# labels=[0, 1] assigns 0 to first bin, 1 to second bin
 
-print(prevalence) #gives percent of values above .43 which is equivalent to the prevalence or our baseline
+# Verify the new column
+cereal_encoded.info()  # See the new rating_f column
 
 # %%
-#let's just double check this
-print(cereal_1h.rating_f.value_counts())
-print(21/(21+56)) #looks good!
+# Calculate the prevalence (percentage of high-quality cereals)
+prevalence = (cereal_encoded.rating_f.value_counts()[1] /
+              len(cereal_encoded.rating_f))
+# value_counts()[1] gets count of '1' values (high quality)
+# Divide by total count to get proportion
+
+print(f"Baseline/Prevalence: {prevalence:.2%}")
+# This is our baseline - any model should beat this accuracy!
+
+# %%
+# Double-check our calculation
+print(cereal_encoded.rating_f.value_counts())
+print(f"Manual calculation: 21/(21+56) = {21/(21+56):.4f}")  # Matches!
 
 # %% [markdown]
-# ### Dropping Variables and Partitioning   
+# ### Dropping Variables and Partitioning
+#
+# **Data Partitioning Strategy**
+# We split data into three sets:
+# 1. **Training (55 samples)**: Used to train the model
+# 2. **Tuning (11 samples)**: Used to tune hyperparameters
+# 3. **Test (11 samples)**: Used for final evaluation only
+#
+# **Why three sets?**
+# - Training: Model learns patterns
+# - Tuning: Select best model configuration without biasing test results
+# - Test: Unbiased evaluation of final model performance
 
 # %%
-#Divide up our data into three parts, Training, Tuning, and Test but first we need to...
-#clean up our dataset a bit by dropping the original rating variable and the cereal name since we can't really use them
+# Clean up the dataset before splitting
+# Remove columns we can't use as features:
+# - 'name': Unique identifier, not a predictive feature
+# - 'rating': Our target variable (we're using rating_f instead)
 
-cereal_dt = cereal_1h.drop(['name','rating'],axis=1) #creating a new dataframe so we don't delete these columns from our working environment. 
-print(cereal_dt)
-
-# %%
-# Now we partition
-Train, Test = train_test_split(cereal_dt,  train_size = 55, stratify = cereal_dt.rating_f) 
-#stratify perserves class proportions when splitting, reducing sampling error 
+cereal_clean = cereal_encoded.drop(['name', 'rating'], axis=1)
+# axis=1 means drop columns (axis=0 would drop rows)
+print(cereal_clean)
 
 # %%
-print(Train.shape)
-print(Test.shape)
+# First split: Separate training data from the rest
+train, test = train_test_split(
+    cereal_clean,
+    train_size=55,
+    stratify=cereal_clean.rating_f
+)
+# stratify=cereal_clean.rating_f ensures class proportions are preserved
+# This reduces sampling error and gives more reliable results
+# PEP 8: lowercase variable names
 
 # %%
-#Now we need to use the function again to create the tuning set
-Tune, Test = train_test_split(Test,  train_size = .5, stratify= Test.rating_f)
+# Verify the split sizes
+print(f"Training set shape: {train.shape}")
+print(f"Test set shape: {test.shape}")
 
 # %%
-#check the prevalance in all groups, they should be all equivalent in order to eventually build an accurate model
-print(Train.rating_f.value_counts())
-print(15/(40+15))
+# Second split: Split remaining data into tuning and test sets (50/50)
+tune, test = train_test_split(
+    test,
+    train_size=.5,
+    stratify=test.rating_f
+)
 
 # %%
-print(Tune.rating_f.value_counts())
-print(3/(8+3)) #good
+# Verify prevalence in training set
+# (Should match overall prevalence due to stratification)
+print("Training set class distribution:")
+print(train.rating_f.value_counts())
+print(f"Training prevalence: {15/(40+15):.2%}")
 
 # %%
-print(Test.rating_f.value_counts())
-print(3/(8+3)) #same as above, good job!
+# Verify prevalence in tuning set
+print("\nTuning set class distribution:")
+print(tune.rating_f.value_counts())
+print(f"Tuning prevalence: {3/(8+3):.2%}")
+
+# %%
+# Verify prevalence in test set
+print("\nTest set class distribution:")
+print(test.rating_f.value_counts())
+print(f"Test prevalence: {3/(8+3):.2%}")
+# All three sets have similar prevalence - stratification worked!
 
 # %% [markdown]
-# # Now you try!
+# # Now You Try!
+#
+# Practice what you've learned with a different dataset!
+# Apply the same preprocessing steps to the job placement dataset.
 
 # %%
-job = pd.read_csv("https://raw.githubusercontent.com/DG1606/CMS-R-2020/master/Placement_Data_Full_Class.csv")
+# Load the job placement dataset
+job_url = ("https://raw.githubusercontent.com/DG1606/CMS-R-2020/"
+           "master/Placement_Data_Full_Class.csv")
+job = pd.read_csv(job_url)
 print(job.head())
 
 # %%
+# Explore the structure of the dataset
 job.info()
-
-# Let's check the structure of the dataset and see if we have any issues with variable classes
+# Check for data types and identify which columns need type conversion
 
 # %%
+# Load another dataset for practice
+data_world_url = "https://query.data.world/s/ttvvwduzk3hwuahxgxe54jgfyjaiul"
+response = requests.get(data_world_url).text
+dataset = pd.read_csv(StringIO(response))
+print(dataset.head())
+print(response)
 
-url="https://query.data.world/s/ttvvwduzk3hwuahxgxe54jgfyjaiul"
-s=requests.get(url).text
-c=pd.read_csv(StringIO(s))
-print(c.head())
-print(s)
 # %%
+# Re-examine job dataset structure
 job.info()
-#summarize the missing values
+# TODO: Summarize the missing values
 
 # %%
-#summarize the missing values in the job dataset
+# Summarize missing values in the job dataset
+# isna() returns True for missing values, sum() counts them
 job.isna().sum()
-#job.notna().sum() #this is the same as the above code, but for non-missing values
+# Alternative: job.notna().sum() counts non-missing values
 
 # %%
-job1 = job.loc[job.notna().all(axis='columns')]
+# Remove rows with any missing values
+# notna() returns True for non-missing values
+# all(axis='columns') checks if all values in a row are non-missing
+job_clean = job.loc[job.notna().all(axis='columns')]
+
 # %%
